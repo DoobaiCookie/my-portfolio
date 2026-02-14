@@ -2,16 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ExternalLinkIcon, MailIcon, GithubIcon, LayoutTemplateIcon, ArrowRightIcon, CopyIcon, CheckIcon, UserIcon, MenuIcon } from 'lucide-react';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import Link from 'next/link';
+import {
+  Navbar, NavbarBrand, NavbarContent, NavbarItem, NavbarMenuToggle, NavbarMenu, NavbarMenuItem,
+  Button, Link, Card, CardHeader, CardBody, CardFooter, Image,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
+  Input, Textarea, Avatar, Chip, Tooltip, Divider
+} from "@heroui/react";
+import { MailIcon, GithubIcon, LayoutTemplateIcon, ArrowRightIcon, CopyIcon, CheckIcon, UserIcon, MenuIcon } from 'lucide-react';
 
+// --- Type Definitions ---
 interface Project {
   id: string;
   title: string;
@@ -32,39 +31,25 @@ export default function Home() {
   const [config, setConfig] = useState<SiteConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Email Modal Control
+  const {isOpen, onOpen, onOpenChange} = useDisclosure();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Projects
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (projectsError) throw projectsError;
+        const { data: projectsData } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
         setProjects(projectsData || []);
 
-        // 2. Site Config
-        const { data: configData, error: configError } = await supabase
-          .from('site_config')
-          .select('*')
-          .limit(1)
-          .single();
-
-        if (configError) {
-           console.warn('Config fetch error (using defaults):', configError);
-        } else {
-           setConfig(configData);
-        }
-
+        const { data: configData } = await supabase.from('site_config').select('*').limit(1).single();
+        if (configData) setConfig(configData);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -75,167 +60,236 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const menuItems = [
+    { name: "Home", href: "#hero" },
+    { name: "About", href: "#about" },
+    { name: "Projects", href: "#projects" },
+    { name: "Contact", href: "#contact" },
+  ];
+
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary-100 selection:text-primary-900">
       
-      {/* --- Navigation Bar (Sticky) --- */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 flex items-center justify-between px-4 sm:px-8">
-        <Link href="/" className="text-xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
-          <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white text-sm font-bold">JHJ</div>
-          Portfolio
-        </Link>
+      {/* --- Navigation Bar (HeroUI) --- */}
+      <Navbar onMenuOpenChange={setIsMenuOpen} isBordered maxWidth="xl" className="fixed top-0 z-50 bg-background/70 backdrop-blur-lg">
+        <NavbarContent>
+          <NavbarMenuToggle
+            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            className="sm:hidden"
+          />
+          <NavbarBrand>
+            <div className="bg-foreground text-background font-bold rounded-lg w-8 h-8 flex items-center justify-center mr-2 text-small">JHJ</div>
+            <p className="font-bold text-inherit">PORTFOLIO</p>
+          </NavbarBrand>
+        </NavbarContent>
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-          <Link href="#hero" className="hover:text-black transition-colors">Home</Link>
-          <Link href="#about" className="hover:text-black transition-colors">About</Link>
-          <Link href="#projects" className="hover:text-black transition-colors">Projects</Link>
-          <Link href="#contact" className="hover:text-black transition-colors">Contact</Link>
-          <Button variant="outline" size="sm" asChild className="rounded-full ml-4">
-            <Link href="/login">Admin</Link>
-          </Button>
-        </div>
+        <NavbarContent className="hidden sm:flex gap-8" justify="center">
+          {menuItems.map((item) => (
+            <NavbarItem key={item.name}>
+              <Link color="foreground" href={item.href} className="hover:text-primary transition-colors font-medium">
+                {item.name}
+              </Link>
+            </NavbarItem>
+          ))}
+        </NavbarContent>
+        
+        <NavbarContent justify="end">
+          <NavbarItem>
+            <Button as={Link} color="primary" href="/login" variant="flat" size="sm" radius="full">
+              Admin
+            </Button>
+          </NavbarItem>
+        </NavbarContent>
 
-        {/* Mobile Menu (Sheet) */}
-        <div className="md:hidden">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MenuIcon className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <nav className="flex flex-col gap-6 mt-10 text-lg font-medium">
-                <Link href="#hero" className="hover:text-blue-600">Home</Link>
-                <Link href="#about" className="hover:text-blue-600">About</Link>
-                <Link href="#projects" className="hover:text-blue-600">Projects</Link>
-                <Link href="#contact" className="hover:text-blue-600">Contact</Link>
-                <Link href="/login" className="text-gray-400 text-sm mt-4">Admin Login</Link>
-              </nav>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </nav>
+        <NavbarMenu>
+          {menuItems.map((item, index) => (
+            <NavbarMenuItem key={`${item}-${index}`}>
+              <Link
+                color="foreground"
+                className="w-full text-lg py-2"
+                href={item.href}
+                size="lg"
+              >
+                {item.name}
+              </Link>
+            </NavbarMenuItem>
+          ))}
+        </NavbarMenu>
+      </Navbar>
 
       {/* --- Hero Section --- */}
-      <section id="hero" className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col items-center justify-center text-center min-h-[80vh]">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-white to-white -z-10"></div>
-        
-        <div className="mb-8 relative">
-          <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
-            <AvatarImage src={config?.profile_image_url || "https://github.com/shadcn.png"} alt="@jhj" />
-            <AvatarFallback className="bg-gray-900 text-white text-3xl font-bold">JHJ</AvatarFallback>
-          </Avatar>
-          <div className="absolute -bottom-2 -right-2 bg-green-500 w-6 h-6 rounded-full border-4 border-white" title="Available for work"></div>
+      <section id="hero" className="pt-32 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center justify-center text-center min-h-[90vh]">
+        {/* Background Blob (CSS) */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] h-[60vh] bg-gradient-to-tr from-primary-100 via-secondary-100 to-warning-100 rounded-full blur-[120px] opacity-60 -z-10 pointer-events-none"></div>
+
+        <div className="mb-10 relative group">
+          <Avatar 
+            src={config?.profile_image_url || "https://github.com/shadcn.png"} 
+            className="w-32 h-32 text-large border-4 border-background shadow-2xl transition-transform group-hover:scale-105" 
+            isBordered 
+            color="primary"
+          />
+          <Tooltip content="Available for work" color="success" placement="bottom">
+            <div className="absolute bottom-1 right-1 bg-success w-6 h-6 rounded-full border-4 border-background animate-pulse"></div>
+          </Tooltip>
         </div>
 
-        <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-gray-900 mb-6 leading-tight max-w-4xl whitespace-pre-line">
+        <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight mb-6 leading-tight max-w-5xl bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
           {config?.hero_title || "Crafting Digital Masterpieces."}
         </h1>
         
-        <p className="text-xl sm:text-2xl text-gray-500 mb-10 max-w-2xl mx-auto font-light leading-relaxed whitespace-pre-line">
+        <p className="text-xl sm:text-2xl text-default-500 mb-12 max-w-2xl mx-auto font-light leading-relaxed whitespace-pre-line">
           {config?.hero_subtitle || "Hi, I'm JHJ. I build scalable web applications and intuitive user experiences."}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <Button size="lg" className="rounded-full px-8 h-14 text-lg bg-gray-900 hover:bg-black text-white shadow-lg hover:shadow-xl transition-all" asChild>
-            <Link href="#projects">View My Work</Link>
+          <Button 
+            as={Link} 
+            href="#projects" 
+            size="lg" 
+            color="primary" 
+            variant="shadow" 
+            radius="full" 
+            className="font-semibold text-lg px-8 py-6"
+            endContent={<ArrowRightIcon className="w-4 h-4" />}
+          >
+            View My Work
           </Button>
-          <Button variant="outline" size="lg" className="rounded-full px-8 h-14 text-lg border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all" asChild>
-            <Link href="https://github.com/DoobaiCookie" target="_blank">
-              <GithubIcon className="mr-2 h-5 w-5" /> GitHub Profile
-            </Link>
+          <Button 
+            as={Link} 
+            href="https://github.com/DoobaiCookie" 
+            target="_blank" 
+            size="lg" 
+            variant="bordered" 
+            radius="full" 
+            className="font-medium text-lg px-8 py-6 border-default-200 hover:border-default-400"
+            startContent={<GithubIcon className="w-5 h-5" />}
+          >
+            GitHub Profile
           </Button>
         </div>
       </section>
 
       {/* --- About Section --- */}
-      <section id="about" className="py-24 bg-gray-50 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <div className="order-2 md:order-1">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900">About Me</h2>
-            <p className="text-gray-600 text-lg leading-relaxed mb-6 whitespace-pre-line">
-              {config?.about_text || "I am a passionate developer with a keen eye for design and a drive for creating seamless user experiences. \n\nMy journey started with simple scripts and evolved into building complex full-stack applications."}
+      <section id="about" className="py-24 bg-content2/50 px-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+          <div className="order-2 md:order-1 space-y-8">
+            <div className="space-y-4">
+              <Chip color="secondary" variant="flat" size="sm">About Me</Chip>
+              <h2 className="text-4xl font-bold">Passionate Developer &<br/>Problem Solver.</h2>
+            </div>
+            
+            <p className="text-large text-default-500 leading-relaxed whitespace-pre-line">
+              {config?.about_text || "I am a passionate developer with a keen eye for design and a drive for creating seamless user experiences."}
             </p>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-2xl text-blue-600 mb-1">3+</h3>
-                <p className="text-sm text-gray-500">Years Experience</p>
-              </div>
-              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-2xl text-purple-600 mb-1">{projects.length}+</h3>
-                <p className="text-sm text-gray-500">Projects Completed</p>
-              </div>
+            <div className="grid grid-cols-2 gap-4 pt-4">
+              <Card shadow="sm" className="border-none bg-background/60 backdrop-blur-md">
+                <CardBody className="py-6 px-6">
+                  <p className="text-4xl font-bold text-primary mb-1">3+</p>
+                  <p className="text-small text-default-500 font-medium uppercase tracking-wide">Years Experience</p>
+                </CardBody>
+              </Card>
+              <Card shadow="sm" className="border-none bg-background/60 backdrop-blur-md">
+                <CardBody className="py-6 px-6">
+                  <p className="text-4xl font-bold text-secondary mb-1">{projects.length}+</p>
+                  <p className="text-small text-default-500 font-medium uppercase tracking-wide">Projects Completed</p>
+                </CardBody>
+              </Card>
             </div>
           </div>
           
           <div className="order-1 md:order-2 flex justify-center">
-            {config?.profile_image_url ? (
-               <img src={config.profile_image_url} alt="Profile" className="w-64 h-64 rounded-3xl object-cover shadow-lg rotate-3 hover:rotate-0 transition-transform duration-500" />
-            ) : (
-               <div className="w-full aspect-square bg-gradient-to-br from-blue-100 to-purple-100 rounded-3xl flex items-center justify-center shadow-inner">
-                  <UserIcon className="w-32 h-32 text-blue-300/50" />
-               </div>
-            )}
+            <Card isFooterBlurred radius="lg" className="border-none max-w-[320px] max-h-[400px]">
+              {config?.profile_image_url ? (
+                 <Image
+                   alt="Profile"
+                   className="object-cover"
+                   height={400}
+                   src={config.profile_image_url}
+                   width={320}
+                 />
+              ) : (
+                 <div className="w-[320px] h-[400px] bg-gradient-to-br from-primary-100 to-secondary-100 flex items-center justify-center">
+                    <UserIcon className="w-32 h-32 text-primary-300/50" />
+                 </div>
+              )}
+              <CardFooter className="justify-between before:bg-white/10 border-white/20 border-1 overflow-hidden py-1 absolute before:rounded-xl rounded-large bottom-1 w-[calc(100%_-_8px)] shadow-small ml-1 z-10">
+                <p className="text-tiny text-white/80">Available for freelance.</p>
+                <Button className="text-tiny text-white bg-black/20" variant="flat" color="default" radius="lg" size="sm" onPress={onOpen}>
+                  Contact Me
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
         </div>
       </section>
 
       {/* --- Projects Section --- */}
-      <section id="projects" className="py-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Featured Projects</h2>
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-            A selection of my recent work, from web applications to design systems.
+      <section id="projects" className="py-32 px-6 max-w-6xl mx-auto">
+        <div className="text-center mb-20 space-y-4">
+          <Chip color="primary" variant="dot" size="md">Portfolio</Chip>
+          <h2 className="text-4xl sm:text-5xl font-bold">Featured Projects</h2>
+          <p className="text-xl text-default-500 max-w-2xl mx-auto">
+            A selection of my recent work, showcasing my skills in web development and design.
           </p>
         </div>
         
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-24 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-            <p className="text-gray-400 text-lg">No projects added yet.</p>
+          <div className="text-center py-24 bg-content2 rounded-3xl border border-dashed border-default-200">
+            <p className="text-default-400 text-lg">No projects added yet.</p>
           </div>
         ) : (
-          <div className="space-y-12">
+          <div className="space-y-16">
             {projects.map((project, index) => (
-              <Card key={project.id} className="group overflow-hidden border border-gray-200 bg-white rounded-3xl hover:shadow-2xl transition-all duration-500">
-                <div className="grid grid-cols-1 md:grid-cols-5 h-full">
-                  <div className={`md:col-span-2 bg-gradient-to-br ${index % 2 === 0 ? 'from-blue-50 to-indigo-50' : 'from-purple-50 to-pink-50'} p-8 flex items-center justify-center group-hover:scale-105 transition-transform duration-700`}>
-                     <LayoutTemplateIcon className={`w-20 h-20 ${index % 2 === 0 ? 'text-blue-200' : 'text-purple-200'}`} />
+              <Card key={project.id} isHoverable className="w-full border-none shadow-medium hover:shadow-2xl transition-all duration-500 bg-background/60 backdrop-blur-lg">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-0 h-full">
+                  {/* Left: Thumbnail Area */}
+                  <div className={`md:col-span-5 relative h-64 md:h-auto overflow-hidden bg-gradient-to-br ${index % 2 === 0 ? 'from-blue-50 to-cyan-50' : 'from-purple-50 to-pink-50'} flex items-center justify-center group`}>
+                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500"></div>
+                     <LayoutTemplateIcon className={`w-24 h-24 ${index % 2 === 0 ? 'text-blue-200' : 'text-purple-200'} transform group-hover:scale-110 transition-transform duration-700`} />
                   </div>
                   
-                  <div className="md:col-span-3 p-8 flex flex-col justify-center">
-                    <CardHeader className="p-0 mb-4">
-                      <CardTitle className="text-3xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
-                        {project.title}
-                      </CardTitle>
-                    </CardHeader>
-                    
-                    <CardContent className="p-0 mb-8 flex-grow">
-                      <p className="text-gray-600 text-lg leading-relaxed line-clamp-3">
+                  {/* Right: Content Area */}
+                  <div className="md:col-span-7 p-8 md:p-10 flex flex-col justify-center">
+                    <div className="mb-6">
+                      <h3 className="text-2xl sm:text-3xl font-bold mb-3">{project.title}</h3>
+                      <p className="text-default-500 text-lg leading-relaxed line-clamp-3">
                         {project.description || "No description provided."}
                       </p>
-                    </CardContent>
+                    </div>
                     
-                    <CardFooter className="p-0 flex flex-wrap gap-4 mt-auto">
-                      <Link href={`/projects/${project.id}`}>
-                        <Button className="rounded-full px-6 bg-gray-900 hover:bg-black text-white group-hover:translate-x-1 transition-transform">
-                          Open Project <ArrowRightIcon className="ml-2 h-4 w-4" />
-                        </Button>
-                      </Link>
+                    <div className="flex flex-wrap gap-4 mt-auto">
+                      <Button 
+                        as={Link} 
+                        href={`/projects/${project.id}`} 
+                        color="primary" 
+                        variant="solid" 
+                        radius="full"
+                        className="font-medium px-6"
+                        endContent={<ArrowRightIcon className="w-4 h-4" />}
+                      >
+                        Open Project
+                      </Button>
                       
                       {project.canva_url && (
-                        <Button variant="ghost" className="rounded-full text-gray-500 hover:text-gray-900" asChild>
-                           <a href={project.canva_url} target="_blank" rel="noopener noreferrer">
-                             Presentation ↗
-                           </a>
+                        <Button 
+                          as={Link} 
+                          href={project.canva_url} 
+                          target="_blank" 
+                          variant="light" 
+                          radius="full"
+                          className="text-default-500 hover:text-foreground font-medium"
+                          endContent={<ExternalLinkIcon className="w-3 h-3" />}
+                        >
+                          Presentation
                         </Button>
                       )}
-                    </CardFooter>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -245,60 +299,98 @@ export default function Home() {
       </section>
 
       {/* --- Contact Section --- */}
-      <section id="contact" className="py-24 bg-gray-900 text-white px-4 sm:px-6 lg:px-8 text-center">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold mb-6">Let's Work Together</h2>
-          <p className="text-xl text-gray-400 mb-10 leading-relaxed">
+      <section id="contact" className="py-32 bg-foreground text-background px-6 text-center">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <h2 className="text-4xl sm:text-5xl font-bold">Let's Work Together</h2>
+          <p className="text-xl text-default-400 leading-relaxed max-w-xl mx-auto">
             Have a project in mind or just want to chat? <br/>
             I'm always open to new opportunities and collaborations.
           </p>
           
-          <div className="flex justify-center gap-6">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="lg" className="rounded-full px-8 h-14 text-lg bg-white text-black hover:bg-gray-200 hover:scale-105 transition-all">
-                  <MailIcon className="mr-2 h-5 w-5" /> Email Me
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md text-black">
-                <DialogHeader>
-                  <DialogTitle>Contact Info</DialogTitle>
-                  <DialogDescription>Let's connect!</DialogDescription>
-                </DialogHeader>
-                <div className="flex items-center space-x-2 bg-gray-100 p-2 rounded-md border border-gray-200 mt-2">
-                  <div className="grid flex-1 gap-2">
-                    <Label htmlFor="link" className="sr-only">Link</Label>
-                    <Input id="link" value={config?.contact_email || 'jhj1785@naver.com'} readOnly className="border-none bg-transparent focus-visible:ring-0 text-base shadow-none h-auto py-1" />
-                  </div>
-                  <Button type="submit" size="sm" className="px-3" onClick={copyEmail}>
-                    {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
-                  </Button>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="secondary" className="w-full mt-2" asChild>
-                    <Link href={`mailto:${config?.contact_email || 'jhj1785@naver.com'}`}>Open Mail App</Link>
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+          <div className="flex justify-center gap-6 pt-4">
+            <Button 
+              size="lg" 
+              color="default" 
+              variant="faded" 
+              radius="full" 
+              className="h-14 px-8 text-lg font-semibold bg-background text-foreground hover:scale-105"
+              startContent={<MailIcon className="w-5 h-5" />}
+              onPress={onOpen}
+            >
+              Email Me
+            </Button>
             
-            <Button variant="outline" size="lg" className="rounded-full px-8 h-14 text-lg border-gray-700 text-white hover:bg-gray-800 hover:text-white" asChild>
-              <Link href="https://github.com/DoobaiCookie" target="_blank">
-                <GithubIcon className="mr-2 h-5 w-5" /> GitHub
-              </Link>
+            <Button 
+              as={Link} 
+              href="https://github.com/DoobaiCookie" 
+              target="_blank" 
+              size="lg" 
+              variant="bordered" 
+              radius="full" 
+              className="h-14 px-8 text-lg font-semibold border-default-600 text-default-300 hover:text-white hover:border-white"
+              startContent={<GithubIcon className="w-5 h-5" />}
+            >
+              GitHub
             </Button>
           </div>
         </div>
       </section>
 
       {/* --- Footer --- */}
-      <footer className="bg-black text-gray-500 py-10 text-center text-sm border-t border-gray-800">
-        <p>© 2026 JHJ. All rights reserved.</p>
-        <div className="mt-4 flex justify-center gap-4 text-xs">
-          <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
-          <Link href="#" className="hover:text-white transition-colors">Terms of Service</Link>
+      <footer className="bg-black text-default-500 py-12 text-center text-sm border-t border-white/10">
+        <p className="mb-4">© 2026 JHJ. All rights reserved.</p>
+        <div className="flex justify-center gap-6 text-xs font-medium">
+          <Link href="#" color="foreground" className="hover:text-white transition-colors">Privacy Policy</Link>
+          <Link href="#" color="foreground" className="hover:text-white transition-colors">Terms of Service</Link>
         </div>
       </footer>
+
+      {/* --- Email Modal (HeroUI) --- */}
+      <Modal 
+        isOpen={isOpen} 
+        onOpenChange={onOpenChange} 
+        placement="center"
+        backdrop="blur"
+        classNames={{
+          backdrop: "bg-gradient-to-t from-zinc-900 to-zinc-900/10 backdrop-opacity-20"
+        }}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Contact Info</ModalHeader>
+              <ModalBody>
+                <p className="text-default-500 mb-2">
+                  Feel free to reach out via email!
+                </p>
+                <div className="flex items-center gap-2 bg-default-100 p-2 rounded-xl border border-default-200">
+                  <Input
+                    isReadOnly
+                    defaultValue={config?.contact_email || 'jhj1785@naver.com'}
+                    variant="flat"
+                    classNames={{
+                      input: "bg-transparent",
+                      inputWrapper: "bg-transparent shadow-none"
+                    }}
+                  />
+                  <Button isIconOnly color={copied ? "success" : "default"} variant="flat" onPress={copyEmail}>
+                    {copied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Close
+                </Button>
+                <Button color="primary" as={Link} href={`mailto:${config?.contact_email || 'jhj1785@naver.com'}`}>
+                  Open Mail App
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
     </div>
   );
 }

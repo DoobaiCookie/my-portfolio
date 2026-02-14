@@ -8,8 +8,8 @@ import { ExternalLinkIcon, MailIcon, GithubIcon, LayoutTemplateIcon, ArrowRightI
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'; // 모바일 메뉴
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // 프로필용
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 
 interface Project {
@@ -19,38 +19,62 @@ interface Project {
   canva_url: string | null;
 }
 
+interface SiteConfig {
+  hero_title: string;
+  hero_subtitle: string;
+  about_text: string;
+  contact_email: string;
+  profile_image_url: string | null;
+}
+
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [config, setConfig] = useState<SiteConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetchProjects();
+    const fetchData = async () => {
+      try {
+        // 1. Projects
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (projectsError) throw projectsError;
+        setProjects(projectsData || []);
+
+        // 2. Site Config
+        const { data: configData, error: configError } = await supabase
+          .from('site_config')
+          .select('*')
+          .limit(1)
+          .single();
+
+        if (configError) {
+           console.warn('Config fetch error (using defaults):', configError);
+        } else {
+           setConfig(configData);
+        }
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const fetchProjects = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProjects(data || []);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const copyEmail = () => {
-    navigator.clipboard.writeText('jhj1785@naver.com');
+    const email = config?.contact_email || 'jhj1785@naver.com';
+    navigator.clipboard.writeText(email);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // --- Render Sections ---
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-blue-100 selection:text-blue-900">
       
@@ -93,26 +117,24 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* --- Hero Section (Full Height) --- */}
+      {/* --- Hero Section --- */}
       <section id="hero" className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col items-center justify-center text-center min-h-[80vh]">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-white to-white -z-10"></div>
         
         <div className="mb-8 relative">
           <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
-            <AvatarImage src="https://github.com/shadcn.png" alt="@jhj" /> {/* 나중에 본인 사진으로 교체 가능 */}
+            <AvatarImage src={config?.profile_image_url || "https://github.com/shadcn.png"} alt="@jhj" />
             <AvatarFallback className="bg-gray-900 text-white text-3xl font-bold">JHJ</AvatarFallback>
           </Avatar>
           <div className="absolute -bottom-2 -right-2 bg-green-500 w-6 h-6 rounded-full border-4 border-white" title="Available for work"></div>
         </div>
 
-        <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-gray-900 mb-6 leading-tight max-w-4xl">
-          Crafting Digital <br className="hidden sm:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-violet-600">Masterpieces.</span>
+        <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-gray-900 mb-6 leading-tight max-w-4xl whitespace-pre-line">
+          {config?.hero_title || "Crafting Digital Masterpieces."}
         </h1>
         
-        <p className="text-xl sm:text-2xl text-gray-500 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
-          Hi, I'm <span className="font-semibold text-gray-900">JHJ</span>. <br/>
-          I build scalable web applications and intuitive user experiences.
+        <p className="text-xl sm:text-2xl text-gray-500 mb-10 max-w-2xl mx-auto font-light leading-relaxed whitespace-pre-line">
+          {config?.hero_subtitle || "Hi, I'm JHJ. I build scalable web applications and intuitive user experiences."}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
@@ -132,12 +154,8 @@ export default function Home() {
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="order-2 md:order-1">
             <h2 className="text-3xl font-bold mb-6 text-gray-900">About Me</h2>
-            <p className="text-gray-600 text-lg leading-relaxed mb-6">
-              I am a passionate developer with a keen eye for design and a drive for creating seamless user experiences. 
-              My journey started with simple scripts and evolved into building complex full-stack applications.
-            </p>
-            <p className="text-gray-600 text-lg leading-relaxed mb-8">
-              When I'm not coding, you can find me exploring new technologies, contributing to open source, or designing UI/UX prototypes.
+            <p className="text-gray-600 text-lg leading-relaxed mb-6 whitespace-pre-line">
+              {config?.about_text || "I am a passionate developer with a keen eye for design and a drive for creating seamless user experiences. \n\nMy journey started with simple scripts and evolved into building complex full-stack applications."}
             </p>
             
             <div className="grid grid-cols-2 gap-4">
@@ -146,22 +164,25 @@ export default function Home() {
                 <p className="text-sm text-gray-500">Years Experience</p>
               </div>
               <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-2xl text-purple-600 mb-1">10+</h3>
+                <h3 className="font-bold text-2xl text-purple-600 mb-1">{projects.length}+</h3>
                 <p className="text-sm text-gray-500">Projects Completed</p>
               </div>
             </div>
           </div>
           
           <div className="order-1 md:order-2 flex justify-center">
-            {/* 이미지 자리 (임시로 아이콘) */}
-            <div className="w-full aspect-square bg-gradient-to-br from-blue-100 to-purple-100 rounded-3xl flex items-center justify-center shadow-inner">
-               <UserIcon className="w-32 h-32 text-blue-300/50" />
-            </div>
+            {config?.profile_image_url ? (
+               <img src={config.profile_image_url} alt="Profile" className="w-64 h-64 rounded-3xl object-cover shadow-lg rotate-3 hover:rotate-0 transition-transform duration-500" />
+            ) : (
+               <div className="w-full aspect-square bg-gradient-to-br from-blue-100 to-purple-100 rounded-3xl flex items-center justify-center shadow-inner">
+                  <UserIcon className="w-32 h-32 text-blue-300/50" />
+               </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* --- Projects Section (List Style) --- */}
+      {/* --- Projects Section --- */}
       <section id="projects" className="py-24 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Featured Projects</h2>
@@ -179,16 +200,14 @@ export default function Home() {
             <p className="text-gray-400 text-lg">No projects added yet.</p>
           </div>
         ) : (
-          <div className="space-y-12"> {/* 1열 배치 (List Style) */}
+          <div className="space-y-12">
             {projects.map((project, index) => (
               <Card key={project.id} className="group overflow-hidden border border-gray-200 bg-white rounded-3xl hover:shadow-2xl transition-all duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-5 h-full">
-                  {/* Left: Thumbnail / Icon Area */}
                   <div className={`md:col-span-2 bg-gradient-to-br ${index % 2 === 0 ? 'from-blue-50 to-indigo-50' : 'from-purple-50 to-pink-50'} p-8 flex items-center justify-center group-hover:scale-105 transition-transform duration-700`}>
                      <LayoutTemplateIcon className={`w-20 h-20 ${index % 2 === 0 ? 'text-blue-200' : 'text-purple-200'}`} />
                   </div>
                   
-                  {/* Right: Content Area */}
                   <div className="md:col-span-3 p-8 flex flex-col justify-center">
                     <CardHeader className="p-0 mb-4">
                       <CardTitle className="text-3xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
@@ -203,14 +222,12 @@ export default function Home() {
                     </CardContent>
                     
                     <CardFooter className="p-0 flex flex-wrap gap-4 mt-auto">
-                      {/* Open Project Button */}
                       <Link href={`/projects/${project.id}`}>
                         <Button className="rounded-full px-6 bg-gray-900 hover:bg-black text-white group-hover:translate-x-1 transition-transform">
                           Open Project <ArrowRightIcon className="ml-2 h-4 w-4" />
                         </Button>
                       </Link>
                       
-                      {/* Canva Link */}
                       {project.canva_url && (
                         <Button variant="ghost" className="rounded-full text-gray-500 hover:text-gray-900" asChild>
                            <a href={project.canva_url} target="_blank" rel="noopener noreferrer">
@@ -237,7 +254,6 @@ export default function Home() {
           </p>
           
           <div className="flex justify-center gap-6">
-            {/* Email Dialog Button (Dark Mode Style) */}
             <Dialog>
               <DialogTrigger asChild>
                 <Button size="lg" className="rounded-full px-8 h-14 text-lg bg-white text-black hover:bg-gray-200 hover:scale-105 transition-all">
@@ -252,7 +268,7 @@ export default function Home() {
                 <div className="flex items-center space-x-2 bg-gray-100 p-2 rounded-md border border-gray-200 mt-2">
                   <div className="grid flex-1 gap-2">
                     <Label htmlFor="link" className="sr-only">Link</Label>
-                    <Input id="link" defaultValue="jhj1785@naver.com" readOnly className="border-none bg-transparent focus-visible:ring-0 text-base shadow-none h-auto py-1" />
+                    <Input id="link" value={config?.contact_email || 'jhj1785@naver.com'} readOnly className="border-none bg-transparent focus-visible:ring-0 text-base shadow-none h-auto py-1" />
                   </div>
                   <Button type="submit" size="sm" className="px-3" onClick={copyEmail}>
                     {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
@@ -260,7 +276,7 @@ export default function Home() {
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="secondary" className="w-full mt-2" asChild>
-                    <Link href="mailto:jhj1785@naver.com">Open Mail App</Link>
+                    <Link href={`mailto:${config?.contact_email || 'jhj1785@naver.com'}`}>Open Mail App</Link>
                   </Button>
                 </DialogFooter>
               </DialogContent>

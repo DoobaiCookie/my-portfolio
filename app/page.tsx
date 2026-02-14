@@ -186,8 +186,8 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-4 pt-4">
               <Card shadow="sm" className="border-none bg-background/60 backdrop-blur-md">
                 <CardBody className="py-6 px-6">
-                  <p className="text-4xl font-bold text-primary mb-1">3+</p>
-                  <p className="text-small text-default-500 font-medium uppercase tracking-wide">Years Experience</p>
+                  <p className="text-4xl font-bold text-primary mb-1">0+</p>
+                  <p className="text-small text-default-500 font-medium uppercase tracking-wide">Years Experience(Junior)</p>
                 </CardBody>
               </Card>
               <Card shadow="sm" className="border-none bg-background/60 backdrop-blur-md">

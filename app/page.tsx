@@ -8,7 +8,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure,
   Input, Textarea, Avatar, Chip, Tooltip, Divider
 } from "@heroui/react";
-import { MailIcon, GithubIcon, LayoutTemplateIcon, ArrowRightIcon, CopyIcon, CheckIcon, UserIcon, MenuIcon } from 'lucide-react';
+import { MailIcon, GithubIcon, LayoutTemplateIcon, ArrowRightIcon, CopyIcon, CheckIcon, UserIcon, MenuIcon, ExternalLinkIcon } from 'lucide-react';
 
 // --- Type Definitions ---
 interface Project {

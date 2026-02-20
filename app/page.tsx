@@ -193,7 +193,7 @@ export default function Home() {
               </Card>
               <Card shadow="sm" className="border-none bg-background/60 backdrop-blur-md">
                 <CardBody className="py-6 px-6">
-                  <p className="text-4xl font-bold text-secondary mb-1">{projects.length}+</p>
+                  <p className="text-4xl font-bold text-primary mb-1">{projects.length}+</p>
                   <p className="text-small text-default-500 font-medium uppercase tracking-wide">Projects Completed</p>
                 </CardBody>
               </Card>

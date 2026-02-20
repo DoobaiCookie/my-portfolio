@@ -17,6 +17,7 @@ interface Project {
   title: string;
   description: string;
   canva_url: string;
+  image_url: string | null;
 }
 
 interface SiteConfig {
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [canvaUrl, setCanvaUrl] = useState('');
+  const [projectImageFile, setProjectImageFile] = useState<File | null>(null);
 
   // --- Site Config State ---
   const [config, setConfig] = useState<SiteConfig>({
@@ -82,6 +84,7 @@ export default function DashboardPage() {
     setTitle('');
     setDescription('');
     setCanvaUrl('');
+    setProjectImageFile(null);
   };
 
   const startEditing = (project: Project) => {
@@ -89,6 +92,7 @@ export default function DashboardPage() {
     setTitle(project.title);
     setDescription(project.description || '');
     setCanvaUrl(project.canva_url || '');
+    setProjectImageFile(null); // Reset file input
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -100,10 +104,41 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not found');
 
+      let imageUrl = null;
+      if (editingId) {
+        // 기존 이미지 URL 유지 (새 파일이 없으면)
+        const currentProject = projects.find(p => p.id === editingId);
+        imageUrl = currentProject?.image_url;
+      }
+
+      // 이미지 파일 업로드
+      if (projectImageFile) {
+        const fileExt = projectImageFile.name.split('.').pop();
+        const fileName = `project_${Date.now()}.${fileExt}`;
+        const filePath = `projects/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('portfolio-files')
+          .upload(filePath, projectImageFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('portfolio-files')
+          .getPublicUrl(filePath);
+        
+        imageUrl = publicUrl;
+      }
+
       if (editingId) {
         const { error } = await supabase
           .from('projects')
-          .update({ title, description, canva_url: canvaUrl })
+          .update({ 
+            title, 
+            description, 
+            canva_url: canvaUrl,
+            image_url: imageUrl
+          })
           .eq('id', editingId);
         if (error) throw error;
         alert('Project updated!');
@@ -115,6 +150,7 @@ export default function DashboardPage() {
             description,
             canva_url: canvaUrl,
             user_id: user.id,
+            image_url: imageUrl
           });
         if (error) throw error;
         alert('Project created!');
@@ -251,6 +287,16 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="projectImage">Project Thumbnail</Label>
+                  <Input 
+                    id="projectImage" 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => setProjectImageFile(e.target.files ? e.target.files[0] : null)} 
+                  />
+                  <p className="text-xs text-gray-500">Upload a thumbnail image for this project.</p>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
                 </div>
@@ -269,9 +315,18 @@ export default function DashboardPage() {
                   <ul className="space-y-3">
                     {projects.map((p) => (
                       <li key={p.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 border rounded hover:bg-gray-50 ${editingId === p.id ? 'bg-blue-50 border-blue-300' : ''}`}>
-                        <div className="mb-2 sm:mb-0">
-                          <span className="font-bold block">{p.title}</span>
-                          <span className="text-xs text-gray-500 truncate block max-w-xs">{p.description}</span>
+                        <div className="flex items-center gap-3 mb-2 sm:mb-0">
+                          {p.image_url ? (
+                            <img src={p.image_url} alt={p.title} className="w-12 h-12 rounded object-cover border" />
+                          ) : (
+                            <div className="w-12 h-12 rounded bg-gray-200 flex items-center justify-center text-gray-400">
+                              <LayoutTemplateIcon className="w-6 h-6" />
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-bold block">{p.title}</span>
+                            <span className="text-xs text-gray-500 truncate block max-w-xs">{p.description}</span>
+                          </div>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button variant="secondary" size="sm" className="flex-1 sm:flex-none" onClick={() => router.push(`/dashboard/files/${p.id}`)}>

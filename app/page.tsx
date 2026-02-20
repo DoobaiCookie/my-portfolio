@@ -16,6 +16,7 @@ interface Project {
   title: string;
   description: string;
   canva_url: string | null;
+  image_url: string | null;
 }
 
 interface SiteConfig {
@@ -250,8 +251,22 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-0 h-full">
                   {/* Left: Thumbnail Area */}
                   <div className={`md:col-span-5 relative h-64 md:h-auto overflow-hidden bg-gradient-to-br ${index % 2 === 0 ? 'from-blue-50 to-cyan-50' : 'from-purple-50 to-pink-50'} flex items-center justify-center group`}>
-                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500"></div>
-                     <LayoutTemplateIcon className={`w-24 h-24 ${index % 2 === 0 ? 'text-blue-200' : 'text-purple-200'} transform group-hover:scale-110 transition-transform duration-700`} />
+                     {project.image_url ? (
+                       <div className="w-full h-full relative group">
+                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 z-10 transition-colors duration-500"></div>
+                         <Image
+                           alt={project.title}
+                           src={project.image_url}
+                           className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                           removeWrapper
+                         />
+                       </div>
+                     ) : (
+                       <>
+                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500"></div>
+                         <LayoutTemplateIcon className={`w-24 h-24 ${index % 2 === 0 ? 'text-blue-200' : 'text-purple-200'} transform group-hover:scale-110 transition-transform duration-700`} />
+                       </>
+                     )}
                   </div>
                   
                   {/* Right: Content Area */}

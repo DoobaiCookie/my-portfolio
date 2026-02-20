@@ -286,15 +286,54 @@ export default function DashboardPage() {
                     <Input id="canvaUrl" value={canvaUrl} onChange={(e) => setCanvaUrl(e.target.value)} />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="projectImage">Project Thumbnail</Label>
-                  <Input 
-                    id="projectImage" 
-                    type="file" 
-                    accept="image/*"
-                    onChange={(e) => setProjectImageFile(e.target.files ? e.target.files[0] : null)} 
-                  />
-                  <p className="text-xs text-gray-500">Upload a thumbnail image for this project.</p>
+                <div className="space-y-3 border rounded-lg p-4 bg-gray-50/50">
+                  <Label className="font-semibold text-gray-700">Project Thumbnail</Label>
+                  
+                  {/* Image Preview Area */}
+                  {(projectImageFile || (editingId && projects.find(p => p.id === editingId)?.image_url)) && (
+                    <div className="relative w-full max-w-md h-48 bg-gray-200 rounded-lg overflow-hidden border shadow-sm mx-auto">
+                      <img 
+                        src={projectImageFile ? URL.createObjectURL(projectImageFile) : projects.find(p => p.id === editingId)?.image_url!} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setProjectImageFile(null)}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors shadow-md"
+                        title="Remove selected image"
+                      >
+                        <XIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Custom Upload Button */}
+                  <div className="flex flex-col items-center gap-2">
+                    <Input 
+                      id="projectImage" 
+                      type="file" 
+                      accept="image/*"
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setProjectImageFile(e.target.files[0]);
+                        }
+                      }} 
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full border-dashed border-2 h-12 hover:bg-blue-50 hover:border-blue-300 transition-all"
+                      onClick={() => document.getElementById('projectImage')?.click()}
+                    >
+                      <UploadIcon className="w-5 h-5 mr-2 text-gray-500" />
+                      {projectImageFile ? "Change Image" : "Click to Upload Thumbnail"}
+                    </Button>
+                    <p className="text-xs text-gray-400 text-center">
+                      Recommended: 16:9 ratio, max 5MB
+                    </p>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
